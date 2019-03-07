@@ -73,43 +73,51 @@ def plot_all():
     ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
 
     #color = 'tab:red'
-    ax2.set_ylabel('Pressure (Torr)')  # we already handled the x-label with ax1
+    ax2.set_ylabel('Voltage (V)')  # we already handled the x-label with ax1
     ax2.plot(hours, df_thinner["237 (VDC)"], color=grey, label="Voltage")
     ax2.plot(hours, df_thinner["238 (VDC)"], color=red, label="Voltage (Ion Gauge)",)
     ax2.tick_params(axis='y')
     fig.tight_layout()  # otherwise the right y-label is slightly clipped
     plt.subplots_adjust(bottom=.1, top=0.75)
     #ax2.set_ylim(,.08) #for ion gauge ploting on day 2
-    plt.xlim([20,34]) #changes time interval
+    #plt.xlim([0,34]) #changes time interval
 
     plt.figlegend(loc='upper left') #adds a legend
     plt.title("Teensy 3.6 Microcontroller - Two Days Heating and Cooling")
     plt.savefig("bothdays_voltages")
     plt.show()
 
+def combine_pressures(row):
+    if row["pressure"] < 0.000002:
+        return row["ion pressure"]
+    elif row["ion pressure"] < 0.000002:
+        return row["pressure"]
+    return min(row["pressure"], row["ion pressure"])
+
 def delta_temp_vs_pressure():
     #want to create one column for pressures
     chip = df_thinner["115 (C)"]
     plate = df_thinner["101 (C)"]
-    delta_t = chip - plate
+    df_thinner["delta_t"] = chip - plate
 
     #to make merge work
-    #df_thinner.drop(df_thinner.tail(1).index,inplace=True)
-    #print(df_thinner['ion pressure'])
-    #df_thinner['p_combined'] = df_thinner[df_thinner['pressure'], df_thinner['ion pressure']].min(axis=1)
-    #print(df_thinner['p_combined'])
+    df_thinner.drop(df_thinner.tail(1).index,inplace=True)
+    print('ionp', df_thinner['ion pressure'])
+    df_thinner['p_combined'] = df_thinner.apply(combine_pressures, axis=1)
+    print(df_thinner['p_combined'])
 
     plt.xlabel('Pressure (Torr)')
     plt.ylabel('Change in Temperature (C)')
-    plt.plot(df_thinner["ion pressure"], delta_t, color=blue, label="Difference of Chip and Plate Temperature")
+    plt.scatter(df_thinner["p_combined"], df_thinner["delta_t"], color=blue, label="Difference of Chip and Plate Temperature", marker=".", alpha=0.8)
+    plt.savefig("delta_t_func_pressure")
     plt.grid()
 
     #plt.subplots_adjust(bottom=.1, top=0.75)
-    #plt.xlim([20,34]) #changes time interval
+    plt.xlim([0,.0001]) #changes x interval
 
     plt.figlegend(loc='upper left') #adds a legend
-    plt.title("Change in Temperature Between Thermocouples as a Function of Pressure (Ion Gauge)")
-    plt.savefig("delta_temps_vs_p_ion")
+    plt.title("Change in Temperature Between Thermocouples as a Function of Pressure")
+    plt.savefig("delta_temps_vs_p_ion_SUPERPUMP")
     plt.show()
 
 delta_temp_vs_pressure()
